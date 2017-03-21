@@ -1,6 +1,7 @@
 require 'torch'
 require 'nn'
 require 'image'
+require 'riseml'
 
 require 'fast_neural_style.ShaveImage'
 require 'fast_neural_style.TotalVariation'
@@ -64,8 +65,9 @@ local function main()
   local preprocess_method = checkpoint.opt.preprocessing or 'vgg'
   local preprocess = preprocess[preprocess_method]
 
-  local function run_image(in_path, out_path)
-    local img = image.load(in_path, 3)
+  local function run_image(img_data)
+    local byte_tensor = torch.ByteTensor(torch.ByteStorage():string(img_data))
+    local img = image.decompressJPG(byte_tensor, 3)
     if opt.image_size > 0 then
       img = image.scale(img, opt.image_size)
     end
@@ -91,33 +93,10 @@ local function main()
     if opt.median_filter > 0 then
       img_out = utils.median_filter(img_out, opt.median_filter)
     end
-
-    print('Writing output image to ' .. out_path)
-    local out_dir = paths.dirname(out_path)
-    if not path.isdir(out_dir) then
-      paths.mkdir(out_dir)
-    end
-    image.save(out_path, img_out)
+    return image.compressJPG(img_out):storage():string()
   end
 
-
-  if opt.input_dir ~= '' then
-    if opt.output_dir == '' then
-      error('Must give -output_dir with -input_dir')
-    end
-    for fn in paths.files(opt.input_dir) do
-      if utils.is_image_file(fn) then
-        local in_path = paths.concat(opt.input_dir, fn)
-        local out_path = paths.concat(opt.output_dir, fn)
-        run_image(in_path, out_path)
-      end
-    end
-  elseif opt.input_image ~= '' then
-    if opt.output_image == '' then
-      error('Must give -output_image with -input_image')
-    end
-    run_image(opt.input_image, opt.output_image)
-  end
+  riseml.serve(run_image)
 end
 
 

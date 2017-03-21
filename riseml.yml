@@ -1,0 +1,9 @@
+deploy:
+  gpu: yes
+  image:
+    name: riseml/torch:latest
+  run:
+    - wget -nc http://cs.stanford.edu/people/jcjohns/fast-neural-style/models/instance_norm/candy.t7
+    - th fast_neural_style.lua -model candy.t7 -gpu 0
+  input: image/jpeg
+  output: image/jpeg
